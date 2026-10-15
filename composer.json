@@ -1,0 +1,22 @@
+{
+    "name": "leralf/lepdf",
+    "description": "Lean mPDF helper as a ProcessWire module",
+    "type": "processwire-module",
+    "license": "MIT",
+    "homepage": "https://github.com/LeRalf/LePdf",
+    "keywords": [
+        "processwire",
+        "processwire-module",
+        "pdf",
+        "mpdf"
+    ],
+    "support": {
+        "issues": "https://github.com/LeRalf/LePdf/issues"
+    },
+    "require": {
+        "php": ">=7.4"
+    },
+    "suggest": {
+        "mpdf/mpdf": "Not needed: mPDF is bundled in lib/. Only relevant if you want to use your own Composer copy."
+    }
+}

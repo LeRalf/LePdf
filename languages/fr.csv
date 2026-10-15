@@ -1,0 +1,34 @@
+en,fr,description,file,hash
+Example:,Exemple :,,site/modules/LePdf/LePdf.module.php,81eeab9506186e2dca8faefa78d54067
+Placeholders:,Variables :,,site/modules/LePdf/LePdf.module.php,6c08da4181212ed7c3fd1d03c95eee5e
+"{PAGENO} = page number, {nbpg} = total pages, {DATE j.n.Y} = date.","{PAGENO} = numéro de page, {nbpg} = nombre total de pages, {DATE j.n.Y} = date.",,site/modules/LePdf/LePdf.module.php,96f887f4209c62343032b71251051086
+Enabled,Activé,,site/modules/LePdf/LePdf.module.php,00d23a76e43b46dae9ec7aa9dcbebb32
+Header and footer,En-tête et pied de page,,site/modules/LePdf/LePdf.module.php,89c608da9b2642dadd553a73625f902f
+Default texts at the top and bottom of every page. Code can replace them for a single PDF with ->header() and ->footer().,"Textes par défaut en haut et en bas de chaque page. Dans le code, ils peuvent être remplacés pour un seul PDF avec ->header() et ->footer().",,site/modules/LePdf/LePdf.module.php,59710ee3e94554528c7316889878d8c2
+Default header,En-tête par défaut,,site/modules/LePdf/LePdf.module.php,c15a26db4e7f5ced3978e55192a0d6ba
+Printed at the top of every page. Leave empty for no header. Three parts separated by a vertical bar: left|center|right.,Imprimé en haut de chaque page. Laisser vide pour ne pas avoir d’en-tête. Trois parties séparées par une barre verticale : gauche|centre|droite.,,site/modules/LePdf/LePdf.module.php,9ee933b7c187f8ea562ae4ad6bfa2c8a
+My Company|Attendance list|{DATE d.m.Y},Mon entreprise|Liste de présence|{DATE d.m.Y},,site/modules/LePdf/LePdf.module.php,90b281d1634c4723d7d6968a3dc53f0f
+Default footer,Pied de page par défaut,,site/modules/LePdf/LePdf.module.php,57b625f1fce3636b81c3ce93a722429b
+Printed at the bottom of every page. Leave empty for no footer. Same format as the header.,Imprimé en bas de chaque page. Laisser vide pour ne pas avoir de pied de page. Même format que l’en-tête.,,site/modules/LePdf/LePdf.module.php,bb9a2015d7581d7aca2dc26856658572
+Page {PAGENO} of {nbpg},Page {PAGENO} sur {nbpg},,site/modules/LePdf/LePdf.module.php,8d20b88073cfac1b6b058e1e785ff5a8
+Document,Document,,site/modules/LePdf/LePdf.module.php,0945359809dad1fbf3dea1c95a0da951
+Defaults for new PDFs. Code can override them with settings([...]) and ->author().,"Valeurs par défaut des nouveaux PDF. Dans le code, elles peuvent être remplacées avec settings([...]) et ->author().",,site/modules/LePdf/LePdf.module.php,69c2db96c3d9de2b395ceccda01cdb81
+Default author,Auteur par défaut,,site/modules/LePdf/LePdf.module.php,e270d4904768f5fa6fdf6cd25153278e
+Stored in the PDF properties (PDF viewers show it under document properties).,Enregistré dans les propriétés du PDF (les lecteurs PDF l’affichent dans les propriétés du document).,,site/modules/LePdf/LePdf.module.php,93fb7862ab7447a322233f2400e78c9c
+My Company,Mon entreprise,,site/modules/LePdf/LePdf.module.php,ce4f49e74ef2131b4ced020217641097
+Paper format,Format du papier,,site/modules/LePdf/LePdf.module.php,af4407384bfe470531ae51bc0ca9b11a
+Page size of new PDFs.,Taille de page des nouveaux PDF.,,site/modules/LePdf/LePdf.module.php,c75fe8e14e9573969352b2592cd9ae1e
+"A4 is the standard in Europe, Letter in the USA.","A4 est la norme en Europe, Letter aux États-Unis.",,site/modules/LePdf/LePdf.module.php,cde6526231d72a2e8800132434293a27
+Portrait,Portrait,,site/modules/LePdf/LePdf.module.php,1c7444be9626d149ab598fb79b639f96
+Landscape,Paysage,,site/modules/LePdf/LePdf.module.php,815dff01257e5ef182b25d4c1ef0a7a0
+Orientation,Orientation,,site/modules/LePdf/LePdf.module.php,abbd64f40c34c537d3a571af068fce29
+Upright (portrait) or sideways (landscape).,Verticale (portrait) ou horizontale (paysage).,,site/modules/LePdf/LePdf.module.php,fd58c0fd788dca8c39366aef2476b714
+Landscape suits wide tables with many columns.,Le format paysage convient aux tableaux larges avec beaucoup de colonnes.,,site/modules/LePdf/LePdf.module.php,64a926e87ec2b70510fd818d5b08355b
+Tables,Tableaux,,site/modules/LePdf/LePdf.module.php,651ae5789ab776f2fcaf80b5e62801dc
+Default behaviour of tables in new PDFs. Code can change both options on the mPDF object ($pdf->mpdf).,"Comportement par défaut des tableaux dans les nouveaux PDF. Dans le code, les deux options peuvent être modifiées sur l’objet mPDF ($pdf->mpdf).",,site/modules/LePdf/LePdf.module.php,d58763035e81ae555c7b6b52b554b315
+Keep elements together with the table below,Garder les éléments avec le tableau qui suit,,site/modules/LePdf/LePdf.module.php,f62107325183c8801c2492965935e7ee
+"Switches on the mPDF attribute keep-with-table (use_kwt). An element marked with it, for example a heading, stays on the same page as the table that follows it. Without the attribute nothing changes.","Active l’attribut mPDF keep-with-table (use_kwt). Un élément marqué avec cet attribut, par exemple un titre, reste sur la même page que le tableau qui le suit. Sans cet attribut, rien ne change.",,site/modules/LePdf/LePdf.module.php,fcac3b56481875edb98e6d1131b0d204
+"<h3 keep-with-table=""1"">Participants</h3> followed by a table: if the table moves to the next page, the heading moves with it.","<h3 keep-with-table=""1"">Participants</h3> suivi d’un tableau : si le tableau passe à la page suivante, le titre le suit.",,site/modules/LePdf/LePdf.module.php,e44eec10a3f5f55cf37dabd7d280b98f
+Very large tables: allow page break,Très grands tableaux : autoriser le saut de page,,site/modules/LePdf/LePdf.module.php,f198b3b0b82f1430a4865904cee04c51
+What happens with a table that is higher than one page (mPDF option tableMinSizePriority). On: the table continues on the next page. Off: mPDF moves it to a new page and shrinks it to fit.,Ce qui se passe avec un tableau plus haut qu’une page (option mPDF tableMinSizePriority). Activé : le tableau continue sur la page suivante. Désactivé : mPDF le déplace sur une nouvelle page et le réduit pour qu’il tienne.,,site/modules/LePdf/LePdf.module.php,7bf7137aaa4acb17caa9185f0db41bb3
+A list with 200 rows runs over several pages instead of being squeezed onto one.,Une liste de 200 lignes s’étend sur plusieurs pages au lieu d’être comprimée sur une seule.,,site/modules/LePdf/LePdf.module.php,afc9a1df91284b963389931d50d7b7dd

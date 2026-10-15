@@ -1,0 +1,6 @@
+vendor/
+composer.lock
+lib.zip
+lib.new/
+.DS_Store
+Thumbs.db
