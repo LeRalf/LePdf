@@ -54,6 +54,10 @@ check('write() after output throws', throws(function() use ($p) { $p->write('x')
 check('settings() after start throws', throws(function() use ($p) { $p->settings(['margin_top' => 5]); }, 'must be called before'));
 
 $p = new TestPdf();
+$p->write('<p>QR</p><barcode code="2027-TEST-CODE" type="QR" error="M" size="1" disableborder="1" />');
+check('QR code via <barcode type="QR"> works', strpos($p->output(), '%PDF') === 0);
+
+$p = new TestPdf();
 $p->write('<p>Page</p>');
 ob_start();
 $p->show('Résumé-Müller.pdf');

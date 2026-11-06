@@ -27,6 +27,15 @@ $packages = [
 		],
 		'licenseFile' => ['LICENSE.txt', 'mpdf.txt'],
 	],
+	'mpdf-qrcode' => [
+		'repo' => 'mpdf/qrcode', 'tag' => 'v1.2.2', 'license' => 'LGPL-2.1-or-later (per composer.json; the LICENSE file is the LGPL-3.0 text)',
+		'series' => '/^v1\./', // needed for <barcode type="QR"> in mPDF
+		'copy' => [
+			['src', 'Mpdf/QrCode'],
+			['data', 'Mpdf/data'], // QrCode.php reads __DIR__ . '/../data/*.dat'
+		],
+		'licenseFile' => ['LICENSE', 'mpdf-qrcode.txt'],
+	],
 	'fpdi' => [
 		'repo' => 'Setasign/FPDI', 'tag' => 'v2.6.9', 'license' => 'MIT',
 		'series' => '/^v2\./',
@@ -205,7 +214,7 @@ $doc = "# Bundled third-party libraries\n\n"
 	. "## Layout\n\n"
 	. "Every PHP namespace has a folder of the same name: `Mpdf\\` is `lib/Mpdf/`, `setasign\\Fpdi\\` is `lib/setasign/Fpdi/`, and so on.\n"
 	. "`lib/data/` and `lib/ttfonts/` belong to mPDF and must stay next to `lib/Mpdf/`, because mPDF finds them by relative path.\n"
-	. "The two small mPDF helper packages live inside `lib/Mpdf/`.\n"
+	. "The small mPDF helper packages (PSR shims, QR code) live inside `lib/Mpdf/`. The QR code package reads its data files from `lib/Mpdf/data/` (not to be confused with mPDF's own `lib/data/`).\n"
 	. "License texts are in `lib/licenses/`.\n\n"
 	. "## Version choices\n\n"
 	. "`psr/log` 1.x, `myclabs/deep-copy` 1.13.x and `mpdf/psr-log-aware-trait` 2.x are older series on purpose:\n"
@@ -226,7 +235,7 @@ $doc = "# Bundled third-party libraries\n\n"
 file_put_contents($new . '/THIRD-PARTY.md', $doc);
 
 // sanity check before replacing the old lib/
-foreach (['autoload.php', 'Mpdf/Mpdf.php', 'Mpdf/functions.php', 'DeepCopy/deep_copy.php', 'data/mpdf.css', 'ttfonts/DejaVuSans.ttf', 'licenses/mpdf.txt'] as $must) {
+foreach (['autoload.php', 'Mpdf/Mpdf.php', 'Mpdf/functions.php', 'Mpdf/QrCode/QrCode.php', 'Mpdf/data/modele1.dat', 'DeepCopy/deep_copy.php', 'data/mpdf.css', 'ttfonts/DejaVuSans.ttf', 'licenses/mpdf.txt'] as $must) {
 	if (!is_file($new . '/' . $must)) fail("build incomplete, missing $must (old lib/ was left untouched)");
 }
 

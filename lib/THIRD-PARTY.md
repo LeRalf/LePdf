@@ -6,6 +6,7 @@ LePdf ships these libraries in `lib/` so that no Composer is needed on the web s
 | Package | Source | Version | License |
 |---|---|---|---|
 | `mpdf` | [mpdf/mpdf](https://github.com/mpdf/mpdf) | 8.3.1 | GPL-2.0-only |
+| `mpdf-qrcode` | [mpdf/qrcode](https://github.com/mpdf/qrcode) | 1.2.2 | LGPL-2.1-or-later (per composer.json; the LICENSE file is the LGPL-3.0 text) |
 | `fpdi` | [Setasign/FPDI](https://github.com/Setasign/FPDI) | 2.6.9 | MIT |
 | `deep-copy` | [myclabs/DeepCopy](https://github.com/myclabs/DeepCopy) | 1.13.4 | MIT |
 | `psr-log` | [php-fig/log](https://github.com/php-fig/log) | 1.1.4 | MIT |
@@ -17,7 +18,7 @@ LePdf ships these libraries in `lib/` so that no Composer is needed on the web s
 
 Every PHP namespace has a folder of the same name: `Mpdf\` is `lib/Mpdf/`, `setasign\Fpdi\` is `lib/setasign/Fpdi/`, and so on.
 `lib/data/` and `lib/ttfonts/` belong to mPDF and must stay next to `lib/Mpdf/`, because mPDF finds them by relative path.
-The two small mPDF helper packages live inside `lib/Mpdf/`.
+The small mPDF helper packages (PSR shims, QR code) live inside `lib/Mpdf/`. The QR code package reads its data files from `lib/Mpdf/data/` (not to be confused with mPDF's own `lib/data/`).
 License texts are in `lib/licenses/`.
 
 ## Version choices
