@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (2026-11-07)
 
 - Fix: `<barcode type="QR">` failed with "Mpdf\QrCode package was not found". The package `mpdf/qrcode` 1.2.2 is now bundled in `lib/Mpdf/QrCode/` (data files in `lib/Mpdf/data/`) and listed in `lib/THIRD-PARTY.md`. License: LGPL-2.1-or-later per its composer.json (the LICENSE file is the LGPL-3.0 text).
 
