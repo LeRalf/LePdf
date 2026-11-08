@@ -50,13 +50,16 @@ $pdf->show('hello.pdf');                // show in the browser and end the scrip
 | `download($filename)` | Send as a download, ends the script |
 | `save($path)` | Write to a file, returns the absolute path |
 | `output()` | PDF data as a string |
+| `open($file)` | Use an existing PDF as the base instead of HTML, before any content (see "Put a signature on a saved PDF") |
+| `stampImage($image, $x, $y, $width, $height, $page)` | Put an image, for example a signature, on a page of the opened PDF |
+| `stampHtml($html, $x, $y, $width, $height, $page)` | Put an HTML box, for example a date line, on a page of the opened PDF |
 | `title()`, `author()`, `header()`, `footer()` | Document properties, override the configuration |
 | `settings([...])` | mPDF constructor options, e.g. `['margin_top' => 30]`, before any content |
 | `font($family, $regular, $bold, $italic, $boldItalic)` | Register a custom font |
 | `iconFont($family, $file)` | Register an icon font (FontAwesome) |
 | `$pdf->mpdf` | The mPDF instance for everything else |
 
-`write()`, `css()`, `title()`, `author()`, `header()`, `footer()`, `settings()`, `font()` and `iconFont()` can be chained.
+`write()`, `css()`, `title()`, `author()`, `header()`, `footer()`, `settings()`, `font()`, `iconFont()`, `open()`, `stampImage()` and `stampHtml()` can be chained.
 
 `save()` with a relative path writes below `site/assets/LePdf/`; `..` is not allowed there. Absolute paths (Linux and Windows) are used as they are, and an existing file is overwritten. Never build the path from user input.
 
@@ -108,6 +111,25 @@ $mpdf->SetProtection(['print']);
 $mpdf->WriteHTML($html);
 $pdf->show('file.pdf');
 ```
+
+### Put a signature on a saved PDF
+
+```php
+// $data is what a signature pad delivers: "data:image/png;base64,..."
+$pdf = $modules->get('LePdf');
+$pdf->open("lists/{$person->id}.pdf")            // a PDF saved earlier, for example with save()
+	->stampImage($data, 20, 240, 50)             // x, y and width in mm from the top left, last page
+	->stampHtml('<p style="font-size: 8pt">Signed ' . date('d.m.Y H:i') . '</p>', 20, 262, 100, 8)
+	->save("lists/{$person->id}-signed.pdf");
+```
+
+- `open()` takes over every page unchanged (size and orientation stay). No margins, header or footer are added, and `write()` and `css()` cannot be combined with it.
+- `$page` counts from 1; 0 (the default) is the last page. Positions and sizes are in mm from the top left corner of the page. `$height` 0 in `stampImage()` keeps the aspect ratio.
+- An image is PNG, JPEG or GIF (at most 5 MB): raw image data, a `data:image/png;base64,...` string or a local file. Relative paths are below `site/assets/LePdf/`. Web addresses are not loaded. PNG transparency works.
+- `save()` may use the same name as the opened file; the original is read completely first.
+- Check that the user may sign before you stamp, and never build file paths from user input.
+- The result contains a picture of the signature. It is not a digital signature in the legal sense (no certificate, no protection against changes).
+- Limit: the bundled importer (FPDI, free version) cannot read every PDF. PDFs created with LePdf work; PDFs with compressed cross-reference streams (created by some other programs) make `output()`, `save()` and `show()` throw an exception.
 
 ## Saved files
 

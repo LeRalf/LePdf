@@ -154,6 +154,79 @@ $p = new TestPdf();
 $p->mpdf;
 check('an existing .htaccess is not overwritten', file_get_contents($base . '.htaccess') === "# my own rule\n");
 
+echo "Open and stamp\n";
+function pdfPages($bytes) { return preg_match_all('#/Type\s*/Page(?![a-z])#', $bytes); }
+function pdfImages($bytes) { return preg_match_all('#/Subtype\s*/Image#', $bytes); }
+function pdfBoxes($bytes) { preg_match_all('#/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]#', $bytes, $m); return array_map(null, $m[1], $m[2]); }
+
+// source files: two A4 pages (with header and footer from the configuration) and one A5 landscape page
+$p = new TestPdf();
+$p->header('HEADER-X')->footer('FOOTER-X')->write('<h1>Page one</h1><pagebreak /><h1>Page two</h1>');
+$srcPath = $p->save('stamp/source.pdf');
+$srcBytes = file_get_contents($srcPath);
+$p = new TestPdf();
+$p->settings(['format' => 'A5-L'])->write('<p>Landscape</p>');
+$landPath = $p->save('stamp/landscape.pdf');
+
+// a PNG with transparency made with GD, as raw data, as data URI and as file
+$im = imagecreatetruecolor(120, 40);
+imagesavealpha($im, true);
+imagealphablending($im, false);
+imagefill($im, 0, 0, imagecolorallocatealpha($im, 0, 0, 0, 127));
+imagealphablending($im, true);
+imageline($im, 5, 35, 115, 5, imagecolorallocate($im, 10, 20, 120));
+ob_start(); imagepng($im); $png = ob_get_clean();
+$dataUri = 'data:image/png;base64,' . base64_encode($png);
+file_put_contents($work . '/sig.png', $png);
+
+check('test source has two pages and no image', pdfPages($srcBytes) === 2 && pdfImages($srcBytes) === 0, pdfPages($srcBytes) . ' pages, ' . pdfImages($srcBytes) . ' images');
+
+$p = new TestPdf();
+$res = $p->open('stamp/source.pdf')->stampImage($dataUri, 20, 240, 50)->stampHtml('<p style="font-size:9pt">Signed: äöü 08.11.2026</p>', 20, 262, 100, 10);
+check('open(), stampImage() and stampHtml() can be chained', $res === $p);
+$out = $p->output();
+check('stamped PDF is a PDF', strpos($out, '%PDF') === 0);
+check('stamped PDF keeps the number of pages', pdfPages($out) === 2, (string) pdfPages($out));
+check('stamped PDF contains the image', pdfImages($out) >= 1, (string) pdfImages($out));
+check('stamped PDF keeps the page size (A4)', pdfBoxes($out) === pdfBoxes($srcBytes), json_encode(pdfBoxes($out)) . ' vs ' . json_encode(pdfBoxes($srcBytes)));
+
+$p = new TestPdf();
+$p->open($landPath)->stampImage($png, 10, 10, 30);
+$lout = $p->output();
+$boxes = pdfBoxes($lout);
+// the first MediaBox belongs to the page itself (it wins over the default size that is written once more at the top level)
+check('landscape page keeps its size and orientation', pdfPages($lout) === 1 && count($boxes) > 0 && abs($boxes[0][0] - 595.28) < 0.1 && abs($boxes[0][1] - 419.53) < 0.1, json_encode($boxes));
+
+$p = new TestPdf();
+$p->open('stamp/source.pdf')->stampImage($work . '/sig.png', 20, 20, 40, 0, 1);
+check('image from a file and on page 1', pdfImages($p->output()) >= 1);
+
+$p = new TestPdf();
+$p->open('stamp/source.pdf')->stampImage($png, 20, 240, 50);
+$target = $p->save('stamp/source.pdf'); // overwrite the opened file
+$again = file_get_contents($target);
+check('the opened file can be overwritten by save()', pdfPages($again) === 2 && pdfImages($again) >= 1);
+
+$p = new TestPdf();
+$p->open('stamp/source.pdf');
+check('a PDF without stamps is taken over', pdfPages($p->output()) === 2);
+
+check('stampImage() needs open()', throws(function() { $p = new TestPdf(); $p->stampImage($GLOBALS['png'], 0, 0, 10); }, 'needs open()'));
+check('stampHtml() needs open()', throws(function() { $p = new TestPdf(); $p->stampHtml('x', 0, 0, 10, 10); }, 'needs open()'));
+check('write() after open() throws', throws(function() { $p = new TestPdf(); $p->open('stamp/source.pdf'); $p->write('x'); }, 'together with open()'));
+check('css() after open() throws', throws(function() { $p = new TestPdf(); $p->open('stamp/source.pdf'); $p->css('p{}'); }, 'together with open()'));
+check('open() after start throws', throws(function() { $p = new TestPdf(); $p->write('x'); $p->open('stamp/source.pdf'); }, 'must be called before'));
+check('open() missing file throws', throws(function() { $p = new TestPdf(); $p->open('stamp/missing.pdf'); }, 'cannot read PDF'));
+check('open() rejects ".."', throws(function() { $p = new TestPdf(); $p->open('../x.pdf'); }, '".."'));
+check('a page that does not exist throws', throws(function() { $p = new TestPdf(); $p->open('stamp/source.pdf')->stampImage($GLOBALS['png'], 0, 0, 10, 0, 3); $p->output(); }, 'page 3 does not exist'));
+check('negative page number throws', throws(function() { $p = new TestPdf(); $p->open('stamp/source.pdf')->stampImage($GLOBALS['png'], 0, 0, 10, 0, -1); }, 'page number'));
+check('a text file is not a PDF', throws(function() use ($work) { file_put_contents($work . '/assets/LePdf/stamp/fake.pdf', 'hello'); $p = new TestPdf(); $p->open('stamp/fake.pdf')->output(); }, 'not a PDF'));
+check('image: broken data URI throws', throws(function() { $p = new TestPdf(); $p->open('stamp/source.pdf')->stampImage('data:image/png;base64,@@@', 0, 0, 10); }, 'invalid image data'));
+check('image: SVG data URI is refused', throws(function() { $p = new TestPdf(); $p->open('stamp/source.pdf')->stampImage('data:image/svg+xml;base64,PHN2Zy8+', 0, 0, 10); }, 'invalid image data'));
+check('image: a text file is refused', throws(function() use ($work) { file_put_contents($work . '/note.png', 'not an image'); $p = new TestPdf(); $p->open('stamp/source.pdf')->stampImage($work . '/note.png', 0, 0, 10); }, 'PNG, JPEG or GIF'));
+check('image: a web address is not loaded', throws(function() { $p = new TestPdf(); $p->open('stamp/source.pdf')->stampImage('http://example.com/a.png', 0, 0, 10); }, 'cannot read image'));
+check('image: missing file throws', throws(function() { $p = new TestPdf(); $p->open('stamp/source.pdf')->stampImage('stamp/missing.png', 0, 0, 10); }, 'cannot read image'));
+
 echo "Template\n";
 file_put_contents($work . '/templates/list.php', '<h1><?= htmlspecialchars($title) ?></h1><?php foreach($names as $n) echo "<p>$n</p>"; ?>');
 $p = new TestPdf();

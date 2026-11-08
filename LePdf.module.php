@@ -54,6 +54,15 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 	/** @var array title, header, footer, author set before the instance exists */
 	protected $meta = [];
 
+	/** @var string|null absolute path of an existing PDF that is the base of this document (see open()) */
+	protected $source = null;
+
+	/** @var array stamps queued for the opened PDF (see stampImage(), stampHtml()) */
+	protected $stamps = [];
+
+	/** @var bool the pages of the opened PDF have been imported and stamped */
+	protected $sourceBuilt = false;
+
 	public function __construct() {
 		// defaults of the module configuration
 		$this->set('header', '');
@@ -95,10 +104,13 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 		if($author !== '') $mpdf->SetAuthor($author);
 		if(isset($this->meta['title'])) $mpdf->SetTitle($this->meta['title']);
 
-		$header = isset($this->meta['header']) ? $this->meta['header'] : $this->get('header');
-		if($header !== '') $mpdf->SetHeader($header);
-		$footer = isset($this->meta['footer']) ? $this->meta['footer'] : $this->get('footer');
-		if($footer !== '') $mpdf->SetFooter($footer);
+		// an opened PDF keeps its own pages: no header or footer on top of them
+		if($this->source === null) {
+			$header = isset($this->meta['header']) ? $this->meta['header'] : $this->get('header');
+			if($header !== '') $mpdf->SetHeader($header);
+			$footer = isset($this->meta['footer']) ? $this->meta['footer'] : $this->get('footer');
+			if($footer !== '') $mpdf->SetFooter($footer);
+		}
 
 		$this->instance = $mpdf;
 		return $mpdf;
@@ -189,6 +201,7 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 	 */
 	public function write($html) {
 		$this->requireNotFinalized();
+		$this->requireNoSource('write()');
 		$this->mpdf()->WriteHTML((string) $html);
 		return $this;
 	}
@@ -200,6 +213,7 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 	 */
 	public function css($css) {
 		$this->requireNotFinalized();
+		$this->requireNoSource('css()');
 		$this->mpdf()->WriteHTML((string) $css, \Mpdf\HTMLParserMode::HEADER_CSS);
 		return $this;
 	}
@@ -220,6 +234,148 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 		return $template->render();
 	}
 
+	/* ########## Existing PDFs: open and stamp ########## */
+
+	/**
+	 * Use an existing PDF as the base of this document instead of writing HTML. All pages are taken over
+	 * unchanged; stampImage() and stampHtml() put something on top (for example a signature).
+	 * The file is read when the PDF is rendered. Relative paths are resolved below site/assets/LePdf/.
+	 * Header and footer are not added to the pages of an opened PDF, and write() and css() are not available.
+	 * Never build the path from user input.
+	 *
+	 * Limit: the bundled importer (FPDI, free version) cannot read every PDF. PDFs created with LePdf work;
+	 * a PDF that uses compressed cross-reference streams makes output(), save() and show() throw an exception.
+	 *
+	 * @param string $file
+	 * @return $this
+	 */
+	public function open($file) {
+		$this->requireNotStarted('open()');
+		$path = $this->resolvePath($file);
+		if(!is_file($path) || !is_readable($path)) throw new WireException("LePdf: cannot read PDF: $path");
+		$this->source = $path;
+		return $this;
+	}
+
+	/**
+	 * Put an image on a page of the opened PDF, for example a signature.
+	 *
+	 * $image is a PNG, JPEG or GIF: raw image data, a "data:image/png;base64,..." string (as a signature pad
+	 * delivers it) or the path of a local file (relative paths below site/assets/LePdf/). Web addresses are not loaded.
+	 * $x, $y, $width and $height are in mm from the top left corner of the page; $height 0 keeps the aspect ratio.
+	 * $page counts from 1; 0 is the last page.
+	 *
+	 * @return $this
+	 */
+	public function stampImage($image, $x, $y, $width, $height = 0, $page = 0) {
+		$this->requireOpened('stampImage()');
+		$this->requireNotFinalized();
+		$this->stamps[] = [
+			'type' => 'image',
+			'data' => $this->imageData($image),
+			'x' => (float) $x, 'y' => (float) $y, 'w' => (float) $width, 'h' => (float) $height,
+			'page' => $this->checkPage($page),
+		];
+		return $this;
+	}
+
+	/**
+	 * Put an HTML box on a page of the opened PDF, for example "Signed on ...".
+	 * Box position and size in mm from the top left corner of the page; text that does not fit stays visible.
+	 * Like write(), the HTML is used as it is: escape data with $sanitizer->entities().
+	 * $page counts from 1; 0 is the last page.
+	 *
+	 * @return $this
+	 */
+	public function stampHtml($html, $x, $y, $width, $height, $page = 0) {
+		$this->requireOpened('stampHtml()');
+		$this->requireNotFinalized();
+		$this->stamps[] = [
+			'type' => 'html',
+			'html' => (string) $html,
+			'x' => (float) $x, 'y' => (float) $y, 'w' => (float) $width, 'h' => (float) $height,
+			'page' => $this->checkPage($page),
+		];
+		return $this;
+	}
+
+	/**
+	 * Imports every page of the opened PDF and paints the queued stamps on it.
+	 */
+	protected function buildFromSource() {
+		if($this->sourceBuilt) return;
+		$data = file_get_contents($this->source); // read at once: no file handle stays open, the file can be overwritten by save()
+		if($data === false || strpos($data, '%PDF') !== 0) {
+			throw new WireException('LePdf: not a PDF file: ' . $this->source);
+		}
+		$mpdf = $this->mpdf();
+		$count = $mpdf->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString($data));
+		foreach($this->stamps as $s) {
+			if($s['page'] > $count) {
+				throw new WireException("LePdf: the PDF has $count page(s), page {$s['page']} does not exist.");
+			}
+		}
+		for($i = 1; $i <= $count; $i++) {
+			$tpl = $mpdf->importPage($i);
+			$size = $mpdf->getTemplateSize($tpl);
+			// mPDF takes the sheet size as a portrait format and turns it for 'L': give it short side first
+			$mpdf->AddPageByArray([
+				'orientation' => $size['orientation'],
+				'sheet-size' => [min($size['width'], $size['height']), max($size['width'], $size['height'])],
+				'margin-left' => 0, 'margin-right' => 0, 'margin-top' => 0, 'margin-bottom' => 0,
+				'margin-header' => 0, 'margin-footer' => 0,
+			]);
+			$mpdf->useTemplate($tpl);
+			foreach($this->stamps as $s) {
+				if(($s['page'] === 0 ? $count : $s['page']) !== $i) continue;
+				if($s['type'] === 'image') {
+					$name = 'lepdf' . md5($s['data']);
+					$mpdf->imageVars[$name] = $s['data'];
+					$mpdf->Image('var:' . $name, $s['x'], $s['y'], $s['w'], $s['h'], '', '', true, false);
+				} else {
+					$mpdf->WriteFixedPosHTML($s['html'], $s['x'], $s['y'], $s['w'], $s['h'], 'visible');
+				}
+			}
+		}
+		$this->sourceBuilt = true;
+	}
+
+	/**
+	 * Raw image data from an image argument (data URI, raw data or file path). Only PNG, JPEG and GIF.
+	 *
+	 * @return string
+	 */
+	protected function imageData($image) {
+		$image = (string) $image;
+		if(strpos($image, 'data:image/') === 0) {
+			if(!preg_match('#^data:image/(?:png|jpe?g|gif);base64,([A-Za-z0-9+/=\s]+)$#', $image, $m)) {
+				throw new WireException('LePdf: invalid image data (a PNG, JPEG or GIF as base64 data URI is expected).');
+			}
+			$data = base64_decode(preg_replace('/\s+/', '', $m[1]), true);
+			if($data === false) throw new WireException('LePdf: invalid base64 image data.');
+		} elseif(@getimagesizefromstring($image) !== false) {
+			$data = $image;
+		} else {
+			$path = $this->resolvePath($image);
+			if(!is_file($path) || !is_readable($path)) throw new WireException("LePdf: cannot read image: $path");
+			$data = file_get_contents($path);
+			if($data === false) throw new WireException("LePdf: cannot read image: $path");
+		}
+		if(strlen($data) > 5 * 1024 * 1024) throw new WireException('LePdf: image is larger than 5 MB.');
+		$info = @getimagesizefromstring($data);
+		if($info === false || !in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG, IMAGETYPE_GIF], true)) {
+			throw new WireException('LePdf: the image must be a PNG, JPEG or GIF.');
+		}
+		return $data;
+	}
+
+	/** @return int */
+	protected function checkPage($page) {
+		$page = (int) $page;
+		if($page < 0) throw new WireException('LePdf: the page number must be 1 or higher (0 is the last page).');
+		return $page;
+	}
+
 	/* ########## Output ########## */
 
 	/**
@@ -230,9 +386,14 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 	public function output() {
 		if($this->bytes !== null) return $this->bytes;
 		try {
+			if($this->source !== null) $this->buildFromSource();
 			$bytes = $this->mpdf()->Output('', \Mpdf\Output\Destination::STRING_RETURN);
+		} catch(WireException $e) {
+			throw $e;
 		} catch(\Mpdf\MpdfException $e) {
 			throw new WireException('LePdf: ' . $e->getMessage(), 0, $e);
+		} catch(\setasign\Fpdi\FpdiException $e) {
+			throw new WireException('LePdf: the PDF cannot be imported (' . $e->getMessage() . '). The bundled importer does not read every PDF, for example not those with compressed cross-reference streams.', 0, $e);
 		}
 		$this->finalized = true;
 		return $this->bytes = $bytes;
@@ -258,13 +419,7 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 	 * @return string absolute path of the file
 	 */
 	public function save($path = 'document.pdf') {
-		$path = (string) $path;
-		if(!$this->isAbsolute($path)) {
-			if(preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#', $path)) {
-				throw new WireException('LePdf: ".." is not allowed in relative paths.');
-			}
-			$path = $this->getBaseDir() . ltrim($path, '/\\');
-		}
+		$path = $this->resolvePath($path);
 		if(strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== 'pdf') {
 			throw new WireException('LePdf: file extension must be .pdf');
 		}
@@ -362,6 +517,13 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 			'fontDir' => array_merge($configDefaults['fontDir'], [$fontDir]),
 			'fontdata' => $fontdata,
 		];
+		// the pages of an opened PDF are taken over as they are: no margins
+		if($this->source !== null) {
+			$config = array_merge($config, [
+				'margin_left' => 0, 'margin_right' => 0, 'margin_top' => 0, 'margin_bottom' => 0,
+				'margin_header' => 0, 'margin_footer' => 0,
+			]);
+		}
 		return array_merge($config, $this->options);
 	}
 
@@ -414,6 +576,20 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 		return $this->wire('config')->paths->assets . 'LePdf/';
 	}
 
+	/**
+	 * Absolute paths are used as they are, relative paths are resolved below site/assets/LePdf/ ("..": not allowed).
+	 *
+	 * @return string
+	 */
+	protected function resolvePath($path) {
+		$path = (string) $path;
+		if($this->isAbsolute($path)) return $path;
+		if(preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#', $path)) {
+			throw new WireException('LePdf: ".." is not allowed in relative paths.');
+		}
+		return $this->getBaseDir() . ltrim($path, '/\\');
+	}
+
 	protected function isAbsolute($path) {
 		return (bool) preg_match('#^([A-Za-z]:[\\\\/]|[\\\\/])#', (string) $path);
 	}
@@ -438,6 +614,14 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 		if($this->instance) {
 			throw new WireException("LePdf: $what must be called before mPDF is accessed or write() is used.");
 		}
+	}
+
+	protected function requireOpened($what) {
+		if($this->source === null) throw new WireException("LePdf: $what needs open() first.");
+	}
+
+	protected function requireNoSource($what) {
+		if($this->source !== null) throw new WireException("LePdf: $what cannot be used together with open().");
 	}
 
 	protected function requireNotFinalized() {
