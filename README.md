@@ -7,7 +7,7 @@ The basic idea (a thin wrapper around mPDF) is inspired by RockPdf by Bernhard B
 
 Repository: https://github.com/LeRalf/LePdf
 
-Status: version 0.1.1, early. Tested manually with PHP 8.5 on shared hosting; the automated tests run on PHP 8.3.
+Status: version 0.2.0, early. Tested manually with PHP 8.5 on shared hosting; the automated tests run on PHP 8.3.
 
 ## Requirements
 

@@ -15,7 +15,7 @@
  *
  * @author Ralf Leichtle
  * @copyright 2026 Ralf Leichtle
- * @version 0.1.1 (2026-11-07)
+ * @version 0.2.0 (2026-11-09)
  * @license MIT (this module); bundled libraries have their own licenses
  *
  * Compatible with PHP >= 7.4 (deliberately no PHP 8 only syntax).
@@ -25,7 +25,7 @@ class LePdf extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return [
 			'title' => 'LePdf',
-			'version' => '0.1.1',
+			'version' => '0.2.0',
 			'summary' => 'Lean mPDF helper: create PDFs from HTML and show, download or save them.',
 			'author' => 'Ralf Leichtle',
 			'href' => 'https://github.com/LeRalf/LePdf',

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-09)
 
 - New: use an existing PDF as the base of a document. `open($file)` takes over all pages unchanged, `stampImage()` puts an image (for example a signature from a signature pad, as raw data, data URI or file) and `stampHtml()` an HTML box on a page. Header, footer and margins are not added to opened pages, and `write()` and `css()` throw an exception in this mode. Uses the FPDI importer that is already part of mPDF; PDFs with compressed cross-reference streams cannot be imported and throw an exception.
 - Internal: path handling of `save()` moved to a shared helper, behaviour unchanged.
